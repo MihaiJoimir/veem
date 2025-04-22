@@ -2,17 +2,16 @@
 include 'includes/db.php';
 include 'includes/header.php';
 
-$slug = $_GET['slug'];
+// Get product slug from URL
+$slug = $_GET['slug'] ?? null;
 
-/* ------------------------------------------------------------------
-   Fetch product + its category in one query so we can build a breadcrumb
-   ------------------------------------------------------------------*/
-$stmt = $conn->prepare("SELECT p.*, c.id   AS cat_id,
-                               c.name AS cat_name,
-                               c.slug AS cat_slug
-                        FROM products  p
-                        JOIN categories c ON p.category_id = c.id
-                        WHERE p.slug = ?");
+// Fetch product and its category in one query
+$stmt = $conn->prepare(
+    "SELECT p.*, c.id AS cat_id, c.name AS cat_name, c.slug AS cat_slug
+     FROM products p
+     JOIN categories c ON p.category_id = c.id
+     WHERE p.slug = ?"
+);
 $stmt->bind_param('s', $slug);
 $stmt->execute();
 $product = $stmt->get_result()->fetch_assoc();
@@ -24,44 +23,68 @@ if (!$product) {
     exit;
 }
 
-// Decide which URL style to use in the breadcrumb
-$catUrl = $product['cat_slug'] ? "/category/{$product['cat_slug']}" : "/category.php?id={$product['cat_id']}";
+// Build category URL for breadcrumb
+$catUrl = '/' . ($product['cat_slug'] ?: 'category.php?id=' . $product['cat_id']);
 ?>
 
 <!-- Breadcrumbs -->
 <div class="breadcrumbs">
-    <a href="/">Home</a> / <a href="<?= $catUrl ?>"><?= htmlspecialchars($product['cat_name']) ?></a> / <?= htmlspecialchars($product['name']) ?>
+    <a href="/">Home</a> /
+    <a href="<?= htmlspecialchars($catUrl, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($product['cat_name'], ENT_QUOTES, 'UTF-8') ?></a> /
+    <?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?>
 </div>
 
 <div class="product-container">
     <div class="product-image">
-        <img src="/images/<?= $product['image'] ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+        <img src="/images/<?= htmlspecialchars($product['image'], ENT_QUOTES, 'UTF-8') ?>"
+             alt="<?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?>">
     </div>
 
     <div class="product-info">
-        <h1><?= htmlspecialchars($product['name']) ?></h1>
+        <h1><?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?></h1>
         <p class="price">
-            <?php if ($product['sale_price']) : ?>
-                <span class="old-price">€<?= $product['price'] ?></span> €<?= $product['sale_price'] ?>
-            <?php else : ?>
-                €<?= $product['price'] ?>
+            <?php if ($product['sale_price']): ?>
+                <span class="old-price">€<?= htmlspecialchars($product['price'], ENT_QUOTES, 'UTF-8') ?></span>
+                €<?= htmlspecialchars($product['sale_price'], ENT_QUOTES, 'UTF-8') ?>
+            <?php else: ?>
+                €<?= htmlspecialchars($product['price'], ENT_QUOTES, 'UTF-8') ?>
             <?php endif; ?>
         </p>
 
-        <!-- Attributes -->
         <div class="attributes">
             <?php
-            $attrs = $conn->query("SELECT a.name, pa.value
-                                     FROM product_attributes pa
-                                     JOIN attributes a ON pa.attribute_id = a.id
-                                     WHERE pa.product_id = {$product['id']}");
+            $attrs = $conn->query(
+                "SELECT a.name, pa.value
+                 FROM product_attributes pa
+                 JOIN attributes a ON pa.attribute_id = a.id
+                 WHERE pa.product_id = {$product['id']}"
+            );
             while ($attr = $attrs->fetch_assoc()) {
-                echo "<p><strong>{$attr['name']}:</strong> {$attr['value']}</p>";
+                echo '<p><strong>' . htmlspecialchars($attr['name'], ENT_QUOTES, 'UTF-8') . ':</strong> ' . htmlspecialchars($attr['value'], ENT_QUOTES, 'UTF-8') . '</p>';
             }
             ?>
         </div>
 
-        <p class="description"><?= nl2br(htmlspecialchars($product['description'])) ?></p>
+        <?php if (!empty($product['url'])): ?>
+            <p class="buy-now">
+                <a href="<?= htmlspecialchars($product['url'], ENT_QUOTES, 'UTF-8') ?>"
+                   class="btn btn-primary" target="_blank" rel="noopener">
+                    COMANDĂ
+                </a>
+            </p>
+        <?php endif; ?>
+
+        
+    </div>
+</div>
+<!-- Description Accordion Card -->
+<div class="card accordion-card" id="descAccordion">
+    <div class="card-header accordion-header">
+        Descriere
+        <span class="accordion-toggle">&#x2795;</span>
+    </div>
+    <div class="card-body accordion-body">
+        <?= nl2br(htmlspecialchars($product['description'], ENT_QUOTES, 'UTF-8')) ?>
     </div>
 </div>
 
