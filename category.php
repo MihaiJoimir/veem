@@ -70,7 +70,7 @@ include 'includes/header.php';
 
             <div class="buy-now">
                 <button type="submit" class="btn">
-                    Apply Filters
+                    FILTREAZĂ
                 </button>
             </div>
         </form>
